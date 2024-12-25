@@ -1,13 +1,16 @@
-import WebSocket from 'ws';
+import { WebSocketServer } from "ws";
+import { GamaeManager } from "./GameManager.js";
 
-const ws = new WebSocket('ws://www.host.com/path');
 
-ws.on('error', console.error);
+const wss = new WebSocketServer({ port: 8080 });
 
-ws.on('open', function open() {
-  ws.send('something');
+
+const gameManager = new GamaeManager();
+
+wss.on("connection", function connection(ws) {
+  gameManager.addUser(ws);
+
+  ws.on("dissconnect", () => gameManager.removeUser(ws));
 });
 
-ws.on('message', function message(data) {
-  console.log('received: %s', data);
-});
+
