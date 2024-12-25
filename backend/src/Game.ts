@@ -1,13 +1,13 @@
 import { WebSocket } from "ws";
-import  {Chess}  from "chess.js";
-import { GAME_OVER, INIT_GAME, MOVE } from "./messages.js";
+import { Chess } from "chess.js";
+import { GAME_OVER, INIT_GAME, MOVE } from "./messages";
 
 export class Game {
     public player1: WebSocket;
     public player2: WebSocket;
     public board: Chess;
     private startTime: Date;
-    private moveCount : number = 0;
+    private moveCount: number = 0;
 
     constructor(player1: WebSocket, player2: WebSocket) {
         this.player1 = player1;
@@ -77,4 +77,4 @@ export class Game {
         }
         this.moveCount++;
     }
-} 
+}

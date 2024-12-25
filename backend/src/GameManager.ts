@@ -1,8 +1,8 @@
 import { WebSocket } from "ws";
-import { INIT_GAME, MOVE } from "./messages.js";
-import { Game } from "./Game.js";
+import { INIT_GAME, MOVE } from "./messages";
+import { Game } from "./Game";
 
-export class GamaeManager {
+export class GameManager {
   private games: Game[];
   private pendingUser: WebSocket | null;
   private users: WebSocket[];
@@ -23,7 +23,7 @@ export class GamaeManager {
   }
 
   private addHandler(socket: WebSocket) {
-    socket.on("message", (data) => {
+    socket.on("message", (data: string) => {
       const message = JSON.parse(data.toString());
 
       if (message.type === INIT_GAME) {
@@ -37,9 +37,11 @@ export class GamaeManager {
       }
 
       if (message.type === MOVE) {
-        const game = this.games.find((game) => game.player1 === socket || game.player2 === socket);
+        const game = this.games.find(
+          (game) => game.player1 === socket || game.player2 === socket
+        );
         if (game) {
-          game.makeMove(socket, message.move);   
+          game.makeMove(socket, message.move);
         }
       }
     });
