@@ -9,20 +9,22 @@ export const MOVE = "move";
 export const GAME_OVER = "game_over";
 
 const Game: React.FC = () => {
-
     const socket = useSocket();
     const [chess, setChess] = useState(new Chess());
     const [board, setBoard] = useState(chess.board());
     const [started, setStarted] = useState(false);
+    const [myColor, setMyColor] = useState<"w" | "b">('w');
 
     useEffect(() => {
-        if (!socket) {
-            return;
-        }
+        if (!socket) return;
 
         socket.onmessage = (event) => {
             const message = JSON.parse(event.data);
             console.log(message)
+
+            // Set color based on payload
+            setMyColor(message.payload.color === "white" ? "w" : "b");
+
             switch (message.type) {
                 case INIT_GAME:
                     setStarted(true);
@@ -34,35 +36,42 @@ const Game: React.FC = () => {
                     setBoard(chess.board());
                     break;
                 case GAME_OVER:
+                    alert("Game over!");
+                    break;
+                default:
                     break;
             }
-        }
-    }, [socket]);
+        };
+    }, [socket, chess]);
 
-    if (!socket) return <div>Connecting...</div>
+    if (!socket) return <div>Connecting...</div>;
 
     return (
         <div className="min-h-screen flex flex-col md:flex-row items-center justify-center bg-gray-900 text-white p-4">
             <div className="flex-1 flex justify-center mb-6 md:mb-0">
                 <div className="rounded-lg">
-                    <ChessBoard chess={chess} setBoard={setBoard} socket={socket} board={board} />
+                    <ChessBoard chess={chess} setBoard={setBoard} socket={socket} board={board} myColor={myColor} />
                 </div>
             </div>
             <div className="flex-1 flex flex-col justify-center items-center md:items-start text-center md:text-left gap-6">
                 <div>
-                    {!started && <Button
-                        onClick={() => {
-                            socket.send(JSON.stringify({
-                                type: INIT_GAME
-                            }));
-                        }}
-                    >
-                        Play
-                    </Button>}
+                    {!started && (
+                        <Button
+                            onClick={() => {
+                                socket.send(
+                                    JSON.stringify({
+                                        type: INIT_GAME,
+                                    })
+                                );
+                            }}
+                        >
+                            Play
+                        </Button>
+                    )}
                 </div>
             </div>
         </div>
     );
-}
+};
 
 export default Game;
