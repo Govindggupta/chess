@@ -7,6 +7,8 @@ import { Chess } from "chess.js";
 export const INIT_GAME = "init_game";
 export const MOVE = "move";
 export const GAME_OVER = "game_over";
+export const CREATE_ROOM = "create_room";
+export const JOIN_ROOM = "join_room";
 
 const Game: React.FC = () => {
     const socket = useSocket();
@@ -14,6 +16,8 @@ const Game: React.FC = () => {
     const [board, setBoard] = useState(chess.board());
     const [started, setStarted] = useState(false);
     const [myColor, setMyColor] = useState<"w" | "b">("w"); 
+    const [roomId, setRoomId] = useState<string | null>(null);
+    const [isHost, setIsHost] = useState(false);
 
     useEffect(() => {
         if (!socket) return;
@@ -44,27 +48,83 @@ const Game: React.FC = () => {
 
     if (!socket) return <div>Connecting...</div>;
 
+    // Handle room creation
+    const handleCreateRoom = () => {
+        const generatedRoomId = Math.random().toString(36).substring(2, 8); // Random room ID
+        setRoomId(generatedRoomId);
+        setIsHost(true);
+
+        socket.send(
+            JSON.stringify({
+                type: CREATE_ROOM,
+                payload: { roomId: generatedRoomId },
+            })
+        );
+    };
+
+    // Handle joining a room
+    const handleJoinRoom = (roomId: string) => {
+        setRoomId(roomId);
+        socket.send(
+            JSON.stringify({
+                type: JOIN_ROOM,
+                payload: { roomId },
+            })
+        );
+    };
+
     return (
         <div className="min-h-screen flex flex-col md:flex-row items-center justify-center bg-gray-900 text-white p-4">
             <div className="flex-1 flex justify-center mb-6 md:mb-0">
                 <div className="rounded-lg">
-                    <ChessBoard chess={chess} setBoard={setBoard} socket={socket} board={board} myColor={myColor} />
+                    <ChessBoard
+                        chess={chess}
+                        setBoard={setBoard}
+                        socket={socket}
+                        board={board}
+                        myColor={myColor}
+                    />
                 </div>
             </div>
             <div className="flex-1 flex flex-col justify-center items-center md:items-start text-center md:text-left gap-6">
                 <div>
-                    {!started && (
+                    {!started && !isHost && (
                         <Button
                             onClick={() => {
-                                socket.send(
-                                    JSON.stringify({
-                                        type: INIT_GAME,
-                                    })
-                                );
+                                socket.send(JSON.stringify({ type: INIT_GAME }));
                             }}
                         >
-                            Play
+                            Play Online
                         </Button>
+                    )}
+
+                    {!started && !isHost && (
+                        <Button onClick={handleCreateRoom}>Play with Friend</Button>
+                    )}
+
+                    {!started && isHost && (
+                        <div>
+                            <p>Your Room ID: {roomId}</p>
+                            <button
+                                className="px-12 md:px-20 py-3 bg-green-600 hover:bg-green-500 text-white font-semibold rounded-lg shadow-md transition duration-300 text-lg"
+                                onClick={() => navigator.clipboard.writeText(roomId!)}
+                            >
+                                Copy Room ID
+                            </button>
+                        </div>
+                    )}
+
+                    {!started && !isHost && (
+                        <div>
+                            <input
+                                type="text"
+                                placeholder="Enter Room ID"
+                                onChange={(e) => setRoomId(e.target.value)}
+                                value={roomId || ""}
+                                className="px-4 py-2 text-lg bg-gray-700 text-white rounded-md mb-4"
+                            />
+                            <Button onClick={() => handleJoinRoom(roomId!)}>Join Room</Button>
+                        </div>
                     )}
                 </div>
             </div>
