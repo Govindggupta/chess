@@ -13,21 +13,19 @@ const Game: React.FC = () => {
     const [chess, setChess] = useState(new Chess());
     const [board, setBoard] = useState(chess.board());
     const [started, setStarted] = useState(false);
-    const [myColor, setMyColor] = useState<"w" | "b">('w');
+    const [myColor, setMyColor] = useState<"w" | "b">("w"); 
 
     useEffect(() => {
         if (!socket) return;
 
         socket.onmessage = (event) => {
             const message = JSON.parse(event.data);
-            console.log(message)
-
-            // Set color based on payload
-            setMyColor(message.payload.color === "white" ? "w" : "b");
 
             switch (message.type) {
                 case INIT_GAME:
                     setStarted(true);
+                    const color = message.payload.color === "white" ? "w" : "b";
+                    setMyColor(color);
                     setBoard(chess.board());
                     break;
                 case MOVE:
