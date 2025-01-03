@@ -18,7 +18,8 @@ const ChessBoard: React.FC<{
   chess: Chess;
   myColor: "w" | "b";
   setPromotion: (from: string, to: string) => void;
-}> = ({ board, socket, setBoard, chess, myColor, setPromotion}) => {
+  checkSquare: String | null;
+}> = ({ board, socket, setBoard, chess, myColor, setPromotion, checkSquare }) => {
   const [from, setFrom] = useState<null | Square>(null);
 
   const translateSquareForBlack = (square: Square): Square => {
@@ -42,20 +43,20 @@ const ChessBoard: React.FC<{
       setFrom(null); // Reset selection if same square is selected
       return;
     }
-  
+
     const actualFrom =
       myColor === "b" ? translateSquareForBlack(fromSquare) : fromSquare;
     const actualTo =
       myColor === "b" ? translateSquareForBlack(toSquare) : toSquare;
-  
+
     const move = { from: actualFrom, to: actualTo };
-  
+
     // Check if the move is a promotion move
     const moves = chess.moves({ square: actualFrom, verbose: true });
     const isPromotion = moves.some(
       (move: any) => move.flags.includes('p') && move.to === actualTo
     );
-  
+
     if (isPromotion) {
       setPromotion(actualFrom, actualTo); // Trigger promotion selection
     } else {
@@ -72,7 +73,7 @@ const ChessBoard: React.FC<{
         console.error("Invalid move:", move);
       }
     }
-  
+
     setFrom(null); // Reset selection after move attempt
   };
 
@@ -84,9 +85,8 @@ const ChessBoard: React.FC<{
             const squareRepresentation = (String.fromCharCode(97 + (j % 8)) +
               (8 - i)) as Square;
 
+            const isKingInCheck = squareRepresentation === checkSquare;
             const isDarkSquare = (i + j) % 2 === 0;
-            const blockColor = isDarkSquare ? "#739552" : "#ebecd0";
-            const textColor = isDarkSquare ? "#ebecd0" : "#739552";
 
             return (
               <div
@@ -98,8 +98,11 @@ const ChessBoard: React.FC<{
                 }
                 className={`relative w-12 h-12 flex items-center justify-center ${
                   from === squareRepresentation ? "border-2 border-yellow-500" : ""
+                } ${
+                  isDarkSquare ? 'bg-[#ebecd0]' : 'bg-[#779556]' // Background color based on square position
+                } ${
+                  isKingInCheck ? 'bg-red-500' : '' // Highlight the king's square in red if it's in check
                 }`}
-                style={{ backgroundColor: blockColor }}
               >
                 {square && <ChessPiece square={square} />}
 
@@ -107,7 +110,7 @@ const ChessBoard: React.FC<{
                 {myColor === "w" && j === 0 && (
                   <span
                     className="absolute top-1 left-1 text-xs font-bold"
-                    style={{ color: textColor }}
+                    style={{ color: isDarkSquare ? "#739552" : "#ebecd0" }}
                   >
                     {8 - i}
                   </span>
@@ -115,7 +118,7 @@ const ChessBoard: React.FC<{
                 {myColor === "w" && i === 7 && (
                   <span
                     className="absolute bottom-1 right-1 text-xs font-bold"
-                    style={{ color: textColor }}
+                    style={{ color: isDarkSquare ? "#739552" : "#ebecd0" }}
                   >
                     {String.fromCharCode(97 + j)}
                   </span>
@@ -123,7 +126,7 @@ const ChessBoard: React.FC<{
                 {myColor === "b" && j === 0 && (
                   <span
                     className="absolute top-1 left-1 text-xs font-bold"
-                    style={{ color: textColor }}
+                    style={{ color: isDarkSquare ? "#739552" : "#ebecd0" }}
                   >
                     {i + 1}
                   </span>
@@ -131,7 +134,7 @@ const ChessBoard: React.FC<{
                 {myColor === "b" && i === 7 && (
                   <span
                     className="absolute bottom-1 right-1 text-xs font-bold"
-                    style={{ color: textColor }}
+                    style={{ color: isDarkSquare ? "#739552" : "#ebecd0" }}
                   >
                     {String.fromCharCode(104 - j)}
                   </span>

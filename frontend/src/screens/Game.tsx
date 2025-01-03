@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import ChessBoard from "../components/ChessBoard";
 import Button from "../components/Button";
+import GameOver from "../components/GameOver"; // Import the GameOver component
 import { useSocket } from "../hooks/useSocket";
 import { Chess } from "chess.js";
 import jsPDF from "jspdf";
@@ -22,6 +23,9 @@ const Game: React.FC = () => {
     const [moves, setMoves] = useState<string[]>([]);
     const [promotion, setPromotion] = useState<{ from: string, to: string } | null>(null);
     const [promotionPiece, setPromotionPiece] = useState<string | null>(null);
+    const [gameOver, setGameOver] = useState(false); // Add gameOver state
+    const [winner, setWinner] = useState<string | null>(null); // Add winner state
+    const [checkSquare, setCheckSquare] = useState<string | null>(null); // Add checkSquare state
 
     useEffect(() => {
         if (!socket) return;
@@ -55,12 +59,29 @@ const Game: React.FC = () => {
                     if (chess.move(move)) {
                         setMoves((prevMoves) => [...prevMoves, `${move.from}-${move.to}`]);
                         setBoard(chess.board());
+
+                        // Check for checkmate or stalemate
+                        if (chess.isCheckmate()) {
+                            setGameOver(true);
+                            setWinner(chess.turn() === 'w' ? 'Black' : 'White'); // Set the winner
+                        } else if (chess.isStalemate()) {
+                            setGameOver(true);
+                            setWinner("Draw"); // Set the game as a draw
+                        } else if (chess.isCheck()) {
+                            const kingSquare = chess.turn() === 'w'
+                                ? chess.board().flat().find(sq => sq?.type === 'k' && sq.color === 'w')?.square
+                                : chess.board().flat().find(sq => sq?.type === 'k' && sq.color === 'b')?.square;
+                            setCheckSquare(kingSquare || null); // Highlight the king in check
+                        } else {
+                            setCheckSquare(null); // Reset check square
+                        }
                     } else {
                         console.error("Invalid move from server:", move);
                     }
                     break;
                 case GAME_OVER:
-                    alert("Game over!");
+                    setGameOver(true);
+                    setWinner(message.payload.winner); // Set the winner from the server
                     break;
                 default:
                     break;
@@ -117,7 +138,7 @@ const Game: React.FC = () => {
 
     // Function to download moves as a PDF
     const downloadMovesAsPDF = () => {
-        const doc = new jsPDF(); // Create PDF document
+        const doc = new jsPDF();
 
         doc.setFontSize(16);
         doc.text("Chess Moves", 10, 10); // Title
@@ -167,9 +188,14 @@ const Game: React.FC = () => {
                         board={board}
                         myColor={myColor}
                         setPromotion={handlePromotion}
+                        checkSquare={checkSquare} // Pass checkSquare to ChessBoard
                     />
                 </div>
             </div>
+
+            {/* Render Game Over component if the game is over */}
+            {gameOver && <GameOver winner={winner} />}
+
             {promotion && (
                 <div className="promotion-box text-black bg-white p-4 rounded-lg shadow-lg">
                     <h3 className="text-lg font-semibold mb-4 text-center uppercase tracking-wide">
@@ -191,6 +217,7 @@ const Game: React.FC = () => {
                     </div>
                 </div>
             )}
+
             <div className="flex-1 flex flex-col justify-center items-center md:items-start text-center md:text-left gap-6">
                 <div>
                     {!started && !isHost && (
@@ -278,7 +305,6 @@ const Game: React.FC = () => {
                             Download Moves as PDF
                         </button>
                     </div>
-
                 )}
             </div>
         </div>
