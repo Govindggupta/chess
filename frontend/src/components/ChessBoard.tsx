@@ -37,35 +37,31 @@ const ChessBoard: React.FC<{
   };
 
   const handleMove = (fromSquare: Square, toSquare: Square) => {
-    if (!fromSquare || !toSquare) return;
-
+    if (!fromSquare || !toSquare || fromSquare === toSquare) {
+      setFrom(null); // Reset selection if same square is selected
+      return;
+    }
+  
     const actualFrom =
       myColor === "b" ? translateSquareForBlack(fromSquare) : fromSquare;
     const actualTo =
       myColor === "b" ? translateSquareForBlack(toSquare) : toSquare;
-
-    // Validate the move
-    const validMoves = chess
-      .moves({ square: actualFrom, verbose: true })
-      .map((move) => move.to);
-
-    if (!validMoves.includes(actualTo)) {
-      console.error(`Invalid move: ${actualFrom} to ${actualTo}`);
-      setFrom(null); // Reset selection
-      return;
-    }
-
-    // Execute the move
-    if (chess.move({ from: actualFrom, to: actualTo })) {
+  
+    const move = { from: actualFrom, to: actualTo };
+  
+    // Update the local chess instance before sending the move
+    if (chess.move(move)) {
+      setBoard(chess.board()); // Update the board state
       socket?.send(
         JSON.stringify({
           type: MOVE,
-          payload: { move: { from: actualFrom, to: actualTo } },
+          payload: { move },
         })
       );
-      setBoard([...chess.board()]); // Sync board state
+    } else {
+      console.error("Invalid move:", move);
     }
-    setFrom(null); // Reset selection
+    setFrom(null); // Reset selection after move attempt
   };
 
   return (

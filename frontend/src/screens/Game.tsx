@@ -23,33 +23,48 @@ const Game: React.FC = () => {
 
     useEffect(() => {
         if (!socket) return;
-
+      
         socket.onmessage = (event) => {
-            const message = JSON.parse(event.data);
-
-            switch (message.type) {
-                case INIT_GAME:
-                    setStarted(true);
-                    const color = message.payload.color === "white" ? "w" : "b";
-                    setMyColor(color);
-                    setBoard(chess.board());
-                    break;
-                case MOVE:
-                    const move = message.payload;
-
-                    setMoves((prevMoves) => [...prevMoves, `${move.from}-${move.to}`]);
-
-                    chess.move(move);
-                    setBoard(chess.board());
-                    break;
-                case GAME_OVER:
-                    alert("Game over!");
-                    break;
-                default:
-                    break;
-            }
+          const message = JSON.parse(event.data);
+      
+          switch (message.type) {
+            case INIT_GAME:
+              setStarted(true);
+              const color = message.payload.color === "white" ? "w" : "b";
+              setMyColor(color);
+              setBoard(chess.board());
+              break;
+            case MOVE:
+              const move = message.payload;
+      
+              // Check if the move has already been applied locally
+              const history = chess.history({ verbose: true });
+              const lastMove = history[history.length - 1]; // Use array indexing instead of .at()
+              if (
+                lastMove &&
+                lastMove.from === move.from &&
+                lastMove.to === move.to
+              ) {
+                // Move has already been applied locally, so skip
+                break;
+              }
+      
+              // Apply the move if it hasn't been applied yet
+              if (chess.move(move)) {
+                setMoves((prevMoves) => [...prevMoves, `${move.from}-${move.to}`]);
+                setBoard(chess.board());
+              } else {
+                console.error("Invalid move from server:", move);
+              }
+              break;
+            case GAME_OVER:
+              alert("Game over!");
+              break;
+            default:
+              break;
+          }
         };
-    }, [socket, chess]);
+      }, [socket, chess]);
 
     if (!socket) return <div>Connecting...</div>;
 
