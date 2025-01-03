@@ -7,14 +7,14 @@ const ChessBoard: React.FC<{
   board: ({ square: Square; type: PieceSymbol; color: Color } | null)[][];
   socket: WebSocket | null;
   setBoard: React.Dispatch<
-      React.SetStateAction<
-        ({
-          square: Square;
-          type: PieceSymbol;
-          color: Color;
-        } | null)[][]
-      >
-    >;
+    React.SetStateAction<
+      ({
+        square: Square;
+        type: PieceSymbol;
+        color: Color;
+      } | null)[][]
+    >
+  >;
   chess: Chess;
   myColor: "w" | "b";
 }> = ({ board, socket, setBoard, chess, myColor }) => {
@@ -28,6 +28,14 @@ const ChessBoard: React.FC<{
     return `${newFile}${newRank}` as Square;
   };
 
+  const handleSquareClick = (square: Square) => {
+    if (from === square) {
+      setFrom(null); // Deselect if the same square is clicked
+    } else {
+      setFrom(square); // Select the square
+    }
+  };
+
   const handleMove = (fromSquare: Square, toSquare: Square) => {
     if (!fromSquare || !toSquare) return;
 
@@ -36,6 +44,18 @@ const ChessBoard: React.FC<{
     const actualTo =
       myColor === "b" ? translateSquareForBlack(toSquare) : toSquare;
 
+    // Validate the move
+    const validMoves = chess
+      .moves({ square: actualFrom, verbose: true })
+      .map((move) => move.to);
+
+    if (!validMoves.includes(actualTo)) {
+      console.error(`Invalid move: ${actualFrom} to ${actualTo}`);
+      setFrom(null); // Reset selection
+      return;
+    }
+
+    // Execute the move
     if (chess.move({ from: actualFrom, to: actualTo })) {
       socket?.send(
         JSON.stringify({
@@ -43,9 +63,7 @@ const ChessBoard: React.FC<{
           payload: { move: { from: actualFrom, to: actualTo } },
         })
       );
-      setBoard(chess.board());
-    } else {
-      console.error("Invalid move:", { from: actualFrom, to: actualTo });
+      setBoard([...chess.board()]); // Sync board state
     }
     setFrom(null); // Reset selection
   };
@@ -68,9 +86,11 @@ const ChessBoard: React.FC<{
                 onClick={() =>
                   from
                     ? handleMove(from, squareRepresentation)
-                    : setFrom(squareRepresentation)
+                    : handleSquareClick(squareRepresentation)
                 }
-                className="relative w-12 h-12 flex items-center justify-center"
+                className={`relative w-12 h-12 flex items-center justify-center ${
+                  from === squareRepresentation ? "border-2 border-yellow-500" : ""
+                }`}
                 style={{ backgroundColor: blockColor }}
               >
                 {square && <ChessPiece square={square} />}
