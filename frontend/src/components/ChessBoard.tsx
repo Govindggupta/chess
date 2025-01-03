@@ -85,7 +85,11 @@ const ChessBoard: React.FC<{
             const squareRepresentation = (String.fromCharCode(97 + (j % 8)) +
               (8 - i)) as Square;
 
-            const isKingInCheck = squareRepresentation === checkSquare;
+            // Check if the current square is the king in check
+            const isKingInCheck = myColor === "b"
+              ? translateSquareForBlack(squareRepresentation) === checkSquare
+              : squareRepresentation === checkSquare;
+
             const isDarkSquare = (i + j) % 2 === 0;
 
             return (
