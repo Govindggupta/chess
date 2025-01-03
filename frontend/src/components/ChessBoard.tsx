@@ -17,7 +17,8 @@ const ChessBoard: React.FC<{
   >;
   chess: Chess;
   myColor: "w" | "b";
-}> = ({ board, socket, setBoard, chess, myColor }) => {
+  setPromotion: (from: string, to: string) => void;
+}> = ({ board, socket, setBoard, chess, myColor, setPromotion}) => {
   const [from, setFrom] = useState<null | Square>(null);
 
   const translateSquareForBlack = (square: Square): Square => {
@@ -49,18 +50,29 @@ const ChessBoard: React.FC<{
   
     const move = { from: actualFrom, to: actualTo };
   
-    // Update the local chess instance before sending the move
-    if (chess.move(move)) {
-      setBoard(chess.board()); // Update the board state
-      socket?.send(
-        JSON.stringify({
-          type: MOVE,
-          payload: { move },
-        })
-      );
+    // Check if the move is a promotion move
+    const moves = chess.moves({ square: actualFrom, verbose: true });
+    const isPromotion = moves.some(
+      (move: any) => move.flags.includes('p') && move.to === actualTo
+    );
+  
+    if (isPromotion) {
+      setPromotion(actualFrom, actualTo); // Trigger promotion selection
     } else {
-      console.error("Invalid move:", move);
+      // Update the local chess instance before sending the move
+      if (chess.move(move)) {
+        setBoard(chess.board()); // Update the board state
+        socket?.send(
+          JSON.stringify({
+            type: MOVE,
+            payload: { move },
+          })
+        );
+      } else {
+        console.error("Invalid move:", move);
+      }
     }
+  
     setFrom(null); // Reset selection after move attempt
   };
 

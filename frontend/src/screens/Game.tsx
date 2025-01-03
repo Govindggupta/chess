@@ -20,51 +20,73 @@ const Game: React.FC = () => {
     const [roomId, setRoomId] = useState<string | null>(null);
     const [isHost, setIsHost] = useState(false);
     const [moves, setMoves] = useState<string[]>([]);
+    const [promotion, setPromotion] = useState<{ from: string, to: string } | null>(null);
+    const [promotionPiece, setPromotionPiece] = useState<string | null>(null);
 
     useEffect(() => {
         if (!socket) return;
-      
+
         socket.onmessage = (event) => {
-          const message = JSON.parse(event.data);
-      
-          switch (message.type) {
-            case INIT_GAME:
-              setStarted(true);
-              const color = message.payload.color === "white" ? "w" : "b";
-              setMyColor(color);
-              setBoard(chess.board());
-              break;
-            case MOVE:
-              const move = message.payload;
-      
-              // Check if the move has already been applied locally
-              const history = chess.history({ verbose: true });
-              const lastMove = history[history.length - 1]; // Use array indexing instead of .at()
-              if (
-                lastMove &&
-                lastMove.from === move.from &&
-                lastMove.to === move.to
-              ) {
-                // Move has already been applied locally, so skip
-                break;
-              }
-      
-              // Apply the move if it hasn't been applied yet
-              if (chess.move(move)) {
-                setMoves((prevMoves) => [...prevMoves, `${move.from}-${move.to}`]);
-                setBoard(chess.board());
-              } else {
-                console.error("Invalid move from server:", move);
-              }
-              break;
-            case GAME_OVER:
-              alert("Game over!");
-              break;
-            default:
-              break;
-          }
+            const message = JSON.parse(event.data);
+
+            switch (message.type) {
+                case INIT_GAME:
+                    setStarted(true);
+                    const color = message.payload.color === "white" ? "w" : "b";
+                    setMyColor(color);
+                    setBoard(chess.board());
+                    break;
+                case MOVE:
+                    const move = message.payload;
+
+                    // Check if the move has already been applied locally
+                    const history = chess.history({ verbose: true });
+                    const lastMove = history[history.length - 1]; // Use array indexing instead of .at()
+                    if (
+                        lastMove &&
+                        lastMove.from === move.from &&
+                        lastMove.to === move.to
+                    ) {
+                        // Move has already been applied locally, so skip
+                        break;
+                    }
+
+                    // Apply the move if it hasn't been applied yet
+                    if (chess.move(move)) {
+                        setMoves((prevMoves) => [...prevMoves, `${move.from}-${move.to}`]);
+                        setBoard(chess.board());
+                    } else {
+                        console.error("Invalid move from server:", move);
+                    }
+                    break;
+                case GAME_OVER:
+                    alert("Game over!");
+                    break;
+                default:
+                    break;
+            }
         };
-      }, [socket, chess]);
+    }, [socket, chess]);
+
+    useEffect(() => {
+        if (promotion && promotionPiece) {
+            const move = {
+                from: promotion.from,
+                to: promotion.to,
+                promotion: promotionPiece,
+            };
+            socket?.send(
+                JSON.stringify({
+                    type: MOVE,
+                    payload: { move },
+                })
+            );
+            chess.move(move);
+            setBoard(chess.board());
+            setPromotion(null);
+            setPromotionPiece(null);
+        }
+    }, [promotionPiece]);
 
     if (!socket) return <div>Connecting...</div>;
 
@@ -130,6 +152,10 @@ const Game: React.FC = () => {
         doc.save("chess_moves.pdf"); // Save the PDF file
     };
 
+    const handlePromotion = (from: string, to: string) => {
+        setPromotion({ from, to });
+    };
+
     return (
         <div className="min-h-screen flex flex-col md:flex-row items-center justify-center bg-gray-900 text-white p-4">
             <div className="flex-1 flex justify-center mb-6 md:mb-0">
@@ -140,9 +166,31 @@ const Game: React.FC = () => {
                         socket={socket}
                         board={board}
                         myColor={myColor}
+                        setPromotion={handlePromotion}
                     />
                 </div>
             </div>
+            {promotion && (
+                <div className="promotion-box text-black bg-white p-4 rounded-lg shadow-lg">
+                    <h3 className="text-lg font-semibold mb-4 text-center uppercase tracking-wide">
+                        Promote Pawn To:
+                    </h3>
+                    <div className="flex justify-center gap-4">
+                        {['q', 'r', 'b', 'n'].map((piece) => (
+                            <button
+                                key={piece}
+                                onClick={() => setPromotionPiece(piece)}
+                                className="p-2 bg-slate-300 hover:bg-slate-400 text-white rounded-md shadow-md transition duration-300"
+                            >
+                                <img
+                                    src={`/${chess.turn() === 'w' ? 'w' : 'b'}${piece}.png`}
+                                    className="w-9 h-9"
+                                />
+                            </button>
+                        ))}
+                    </div>
+                </div>
+            )}
             <div className="flex-1 flex flex-col justify-center items-center md:items-start text-center md:text-left gap-6">
                 <div>
                     {!started && !isHost && (
@@ -222,7 +270,7 @@ const Game: React.FC = () => {
                                 })}
                             </tbody>
                         </table>
-                        
+
                         <button
                             className="mt-4 px-6 py-2 bg-blue-500 hover:bg-blue-400 text-white font-semibold rounded-lg shadow-md transition duration-300"
                             onClick={downloadMovesAsPDF}
