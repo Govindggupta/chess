@@ -2,7 +2,11 @@
     "builds": [
         {
             "src": "backend/package.json",
-            "use": "@railway/node"
+            "use": "@railway/node",
+            "config": {
+                "buildCommand": "npm run build",
+                "startCommand": "npm start"
+            }
         },
         {
             "src": "frontend/package.json",
