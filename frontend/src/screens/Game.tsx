@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import ChessBoard from "../components/ChessBoard";
 import Button from "../components/Button";
-import GameOver from "../components/GameOver"; // Import the GameOver component
+import GameOver from "../components/GameOver";
 import { useSocket } from "../hooks/useSocket";
 import { Chess } from "chess.js";
 import jsPDF from "jspdf";
@@ -13,19 +13,20 @@ export const CREATE_ROOM = "create_room";
 export const JOIN_ROOM = "join_room";
 
 const Game: React.FC = () => {
+
     const socket = useSocket();
     const [chess, setChess] = useState(new Chess());
     const [board, setBoard] = useState(chess.board());
     const [started, setStarted] = useState(false);
-    const [myColor, setMyColor] = useState<"w" | "b">("w");
     const [roomId, setRoomId] = useState<string | null>(null);
     const [isHost, setIsHost] = useState(false);
     const [moves, setMoves] = useState<string[]>([]);
     const [promotion, setPromotion] = useState<{ from: string, to: string } | null>(null);
     const [promotionPiece, setPromotionPiece] = useState<string | null>(null);
-    const [gameOver, setGameOver] = useState(false); // Add gameOver state
-    const [winner, setWinner] = useState<string | null>(null); // Add winner state
-    const [checkSquare, setCheckSquare] = useState<string | null>(null); // Add checkSquare state
+    const [gameOver, setGameOver] = useState(false);
+    const [winner, setWinner] = useState<string | null>(null);
+    const [checkSquare, setCheckSquare] = useState<string | null>(null);
+    const [myColor, setMyColor] = useState<"w" | "b">("w");
 
     useEffect(() => {
         if (!socket) return;
@@ -36,58 +37,44 @@ const Game: React.FC = () => {
             switch (message.type) {
                 case INIT_GAME:
                     setStarted(true);
-                    const color = message.payload.color === "white" ? "w" : "b";
+                    const color = message.payload.color === 'white' ? 'w' : 'b';
                     setMyColor(color);
                     setBoard(chess.board());
                     break;
+
                 case MOVE:
                     const move = message.payload;
 
-                    // Check if the move has already been applied locally
-                    const history = chess.history({ verbose: true });
-                    const lastMove = history[history.length - 1]; // Use array indexing instead of .at()
-                    if (
-                        lastMove &&
-                        lastMove.from === move.from &&
-                        lastMove.to === move.to
-                    ) {
-                        // Move has already been applied locally, so skip
-                        break;
-                    }
+                    setMoves((prevMoves) => [
+                        ...prevMoves,
+                        `${move.from}-${move.to}`,
+                    ]);
 
-                    // Apply the move if it hasn't been applied yet
-                    if (chess.move(move)) {
-                        setMoves((prevMoves) => [...prevMoves, `${move.from}-${move.to}`]);
-                        setBoard(chess.board());
+                    chess.move(move);
+                    setBoard(chess.board());
 
-                        // Check for checkmate or stalemate
-                        if (chess.isCheckmate()) {
-                            setGameOver(true);
-                            setWinner(chess.turn() === 'w' ? 'Black' : 'White'); // Set the winner
-                        } else if (chess.isStalemate()) {
-                            setGameOver(true);
-                            setWinner("Draw"); // Set the game as a draw
-                        } else if (chess.isCheck()) {
-                            const kingSquare = chess.turn() === 'w'
-                                ? chess.board().flat().find(sq => sq?.type === 'k' && sq.color === 'w')?.square
-                                : chess.board().flat().find(sq => sq?.type === 'k' && sq.color === 'b')?.square;
-                            setCheckSquare(kingSquare || null); // Highlight the king in check
-                        } else {
-                            setCheckSquare(null); // Reset check square
-                        }
+                    // Check for check or checkmate
+                    if (chess.isCheckmate()) {
+                        setGameOver(true);
+                        setWinner(chess.turn() === 'w' ? 'Black' : 'White');
+                    } else if (chess.isCheck()) {
+                        const kingSquare = chess.turn() === 'w'
+                            ? chess.board().flat().find(sq => sq?.type === 'k' && sq.color === 'w')?.square
+                            : chess.board().flat().find(sq => sq?.type === 'k' && sq.color === 'b')?.square;
+                        setCheckSquare(kingSquare || null);
                     } else {
-                        console.error("Invalid move from server:", move);
+                        setCheckSquare(null);
                     }
                     break;
+
                 case GAME_OVER:
                     setGameOver(true);
-                    setWinner(message.payload.winner); // Set the winner from the server
+                    setWinner(message.payload.winner);
                     break;
-                default:
-                    break;
+
             }
         };
-    }, [socket, chess]);
+    }, [socket]);
 
     useEffect(() => {
         if (promotion && promotionPiece) {
@@ -106,12 +93,13 @@ const Game: React.FC = () => {
             setBoard(chess.board());
             setPromotion(null);
             setPromotionPiece(null);
+            setCheckSquare(null);
         }
     }, [promotionPiece]);
 
     if (!socket) return <div>Connecting...</div>;
 
-    // Handle room creation
+    // Handle creating a room
     const handleCreateRoom = () => {
         const generatedRoomId = Math.random().toString(36).substring(2, 8);
         setRoomId(generatedRoomId);
@@ -146,31 +134,23 @@ const Game: React.FC = () => {
         // Table header
         doc.setFontSize(12);
         doc.text("No.   From   To", 10, 20);
-        doc.line(10, 22, 80, 22); // Underline
-
-        let y = 30; // Initial Y position for rows
-        const pageHeight = doc.internal.pageSize.height; // Get page height
-
+        doc.line(10, 22, 80, 22);
+        let y = 30;
+        const pageHeight = doc.internal.pageSize.height;
         moves.forEach((move, index) => {
-            const [from, to] = move.split("-"); // Split move into 'from' and 'to'
-
-            // Check if we need to create a new page
+            const [from, to] = move.split("-");
             if (y > pageHeight - 20) {
-                doc.addPage(); // Add a new page
-                y = 20; // Reset Y position for the new page
-
-                // Re-draw table header on the new page
+                doc.addPage();
+                y = 20;
                 doc.setFontSize(12);
                 doc.text("No.   From   To", 10, y);
-                doc.line(10, y + 2, 80, y + 2); // Underline
-                y += 10; // Move down for rows
+                doc.line(10, y + 2, 80, y + 2);
+                y += 10;
             }
-
-            doc.text(`${index + 1}.    ${from}     ${to}`, 10, y); // Write move
-            y += 10; // Increment Y position
+            doc.text(`${index + 1}.    ${from}     ${to}`, 10, y);
+            y += 10;
         });
-
-        doc.save("chess_moves.pdf"); // Save the PDF file
+        doc.save("chess_moves.pdf");
     };
 
     const handlePromotion = (from: string, to: string) => {
@@ -186,14 +166,13 @@ const Game: React.FC = () => {
                         setBoard={setBoard}
                         socket={socket}
                         board={board}
-                        myColor={myColor}
                         setPromotion={handlePromotion}
-                        checkSquare={checkSquare} // Pass checkSquare to ChessBoard
+                        checkSquare={checkSquare}
+                        myColor={myColor}
                     />
                 </div>
             </div>
 
-            {/* Render Game Over component if the game is over */}
             {gameOver && <GameOver winner={winner} />}
 
             {promotion && (
@@ -258,10 +237,7 @@ const Game: React.FC = () => {
                                 value={roomId || ""}
                                 className="px-4 py-2 text-lg bg-gray-700 text-white rounded-md mb-4"
                             />
-                            <Button
-                                disabled={started}
-                                onClick={() => handleJoinRoom(roomId!)}
-                            >
+                            <Button disabled={started} onClick={() => handleJoinRoom(roomId!)}>
                                 Join Room
                             </Button>
                         </div>
@@ -305,6 +281,7 @@ const Game: React.FC = () => {
                             Download Moves as PDF
                         </button>
                     </div>
+
                 )}
             </div>
         </div>
