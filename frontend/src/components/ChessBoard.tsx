@@ -86,8 +86,13 @@ const ChessBoard: React.FC<ChessBoardProps> = ({ board, socket, setBoard, chess,
         }
     };
 
+    // Ranks and files based on player perspective
+    const ranks =  [8, 7, 6, 5, 4, 3, 2, 1] 
+    const files = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h']
+
     return (
         <div className={`relative ${myColor === 'b' ? 'flipped' : ''}`}>
+            {/* Chessboard */}
             <div className='grid grid-cols-8 grid-rows-8 w-[480px] h-[480px] relative'>
                 {board.flat().map((square, index) => {
                     const i = Math.floor(index / 8);
@@ -116,6 +121,42 @@ const ChessBoard: React.FC<ChessBoardProps> = ({ board, socket, setBoard, chess,
                             className={`w-full h-full flex items-center justify-center relative ${(i + j) % 2 === 0 ? 'bg-[#ebecd0]' : 'bg-[#779556]'
                                 } ${isKingInCheck ? 'bg-red-500' : ''} ${isOver ? 'bg-yellow-300' : ''}`}
                         >
+                            
+                            {myColor === 'w' && j === 0 && (
+                                <div
+                                    className={`absolute left-1 top-1 text-sm font-medium ${(i + j) % 2 === 0 ? 'text-[#779556]' : 'text-[#ebecd0]'}`}
+                                >
+                                    {ranks[i]}
+                                </div>
+                            )}
+
+                            
+                            {myColor === 'w' && i === 7 && (
+                                <div
+                                    className={`absolute right-1 bottom-1 text-sm font-medium ${(i + j) % 2 === 0 ? 'text-[#779556]' : 'text-[#ebecd0]'}`}
+                                >
+                                    {files[j]}
+                                </div>
+                            )}
+                            
+                            {myColor === 'b' && j === 7 && (
+                                <div
+                                    className={`flipped absolute right-1 bottom-1 text-sm font-medium ${(i + j) % 2 === 0 ? 'text-[#779556]' : 'text-[#ebecd0]'}`}
+                                >
+                                    {ranks[i]}
+                                </div>
+                            )}
+
+                            
+                            {myColor === 'b' && i === 0 && (
+                                <div
+                                    className={`flipped absolute  left-1 top-1 text-sm font-medium ${(i + j) % 2 === 0 ? 'text-[#779556]' : 'text-[#ebecd0]'}`}
+                                >
+                                    {files[j]}
+                                </div>
+                            )}
+
+                            {/* Chess piece and legal move indicator */}
                             <div className={`${myColor === 'b' ? 'flipped' : ''}`}>
                                 {square ? (
                                     <ChessPiece
