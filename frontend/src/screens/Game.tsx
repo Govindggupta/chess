@@ -194,7 +194,7 @@ const Game: React.FC = () => {
             {gameOver && <GameOver winner={winner} />}
 
             {/* Sidebar Section */}
-            <div className="w-full md:w-[20%] max-w-[300px] flex flex-col gap-4 p-4 bg-gray-800 rounded-lg">
+            <div className="w-full md:w-[20%] max-w-[300px] max-h-[300px] md:max-h-[700px] no-scrollbar flex flex-col gap-4 p-4 bg-gray-800 rounded-lg">
                 {!started && !isHost && (
                     <div className="flex flex-col gap-4">
                         <Button
