@@ -89,6 +89,8 @@ root
 ## Contributing  
 
 We welcome contributions! Feel free to fork the repository and create a pull request.  
+If you are contributing, please create a **separate branch** with the naming convention:  
+`your-name/feature-name`.  
 
 ---
 
